@@ -34,7 +34,27 @@ const extractAvatar = async (url) => {
             }
         }
     } catch (e) {
-        console.log(`Layer 0 falhou, tentando Puppeteer...`);
+        console.log(`Layer 0 falhou, tentando Microlink...`);
+    }
+
+    // LAYER 1: Microlink API (Arma Secreta para burlar bloqueios de Instagram, TikTok, Reddit)
+    try {
+        const mRes = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(6000) });
+        if (mRes.ok) {
+            const mData = await mRes.json();
+            if (mData.status === 'success' && mData.data) {
+                // Tenta pegar a imagem principal ou o logo
+                const avatar = mData.data.image?.url || mData.data.logo?.url;
+                if (avatar) {
+                    let username = mData.data.title || new URL(url).hostname;
+                    username = username.split(' •')[0].split(' |')[0].split(' -')[0].split(' (@')[0].trim();
+                    console.log(`[LAYER 1 SUCESSO] Extração via Microlink para ${url}`);
+                    return { avatar, username };
+                }
+            }
+        }
+    } catch (e) {
+        console.log(`Layer 1 (Microlink) falhou, tentando Puppeteer pesado...`);
     }
 
     let browser = null;
