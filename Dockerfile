@@ -1,29 +1,16 @@
-# Usa a imagem oficial do Puppeteer que já vem com Node.js e Google Chrome pré-instalados
-FROM ghcr.io/puppeteer/puppeteer:latest
-
-# Define a variável de ambiente para que o Puppeteer saiba onde achar o Chrome dentro do container
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+# Imagem Node.js super leve (sem Chrome, sem Puppeteer!)
+FROM node:22-alpine
 
 WORKDIR /app
 
-# O usuário 'pptruser' vem por padrão na imagem por segurança. Mudamos temporariamente para root para instalar pacotes.
-USER root
-
-# Copia e instala as dependências
+# Copia e instala as dependências (ultra rápido sem Puppeteer)
 COPY package*.json ./
-RUN npm install
+RUN npm install --production
 
-# Copia o resto do código da aplicação
+# Copia o código da aplicação
 COPY . .
-
-# Devolve a permissão dos arquivos para o usuário seguro
-RUN chown -R pptruser:pptruser /app
-
-# Volta para o usuário seguro para rodar o app
-USER pptruser
 
 EXPOSE 3000
 
-# Comando para iniciar a API
+# Inicia a API
 CMD ["npm", "start"]
