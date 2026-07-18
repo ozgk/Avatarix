@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avatarix | Universal Profile Fetcher</title>
+    
+    <!-- SEO & Open Graph Meta Tags -->
+    <meta name="description" content="Extração instantânea de fotos de perfil e banners de qualquer rede social ou Discord.">
+    <meta property="og:title" content="Avatarix | Universal Profile">
+    <meta property="og:description" content="Extraia imagens de perfis instantaneamente. Nenhuma burocracia, suporta URLs globais e IDs.">
+    <meta name="theme-color" content="#0f172a">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/847/847969.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; /* Slate 950 */
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
+                              radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
+        }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .highlight-text {
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .micro-anim {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .micro-anim:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.4);
+        }
+
+        .platform-icon {
+            transition: all 0.3s ease;
+            filter: grayscale(100%) opacity(40%);
+        }
+        .platform-icon:hover {
+            filter: grayscale(0%) opacity(100%);
+            transform: scale(1.1);
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* UNIVERSAL PROFILE CARD */
+        .universal-card {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        
+        .uc-banner {
+            height: 140px;
+            width: 100%;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .uc-banner::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to bottom, transparent, rgba(30, 41, 59, 0.9));
+        }
+
+        .uc-avatar-container {
+            position: relative;
+            margin-top: -60px;
+            margin-left: 24px;
+            width: 120px;
+            height: 120px;
+            border-radius: 24px;
+            padding: 4px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .uc-avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            object-fit: cover;
+            background-color: #0f172a;
+        }
+
+        .uc-decoration {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 116%;
+            height: 116%;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        .uc-body {
+            padding: 20px 24px 24px 24px;
+        }
+    </style>
+</head>
+<body class="relative overflow-x-hidden">
+
+    <main class="flex-grow flex items-center justify-center p-4 relative z-10 py-12">
+        <div class="w-full max-w-5xl flex flex-col lg:flex-row gap-6">
+            
+            <!-- Formulário e Resultado -->
+            <div class="flex-1">
+                <!-- Header -->
+                <div class="text-center mb-8">
+                    <h1 class="text-5xl font-extrabold mb-3 tracking-tight text-white">
+                        <i class="fa-solid fa-earth-americas text-indigo-500 mr-2"></i>Avatarix
+                    </h1>
+                    <p class="text-slate-400 text-sm max-w-md mx-auto">Motor de extração universal de perfis. Cole um link do <span class="text-pink-400">Instagram</span>, <span class="text-white">GitHub</span>, <span class="text-blue-500">LinkedIn</span> ou ID do <span class="text-indigo-400">Discord</span>.</p>
+                </div>
+
+                <!-- Main Panel -->
+                <div class="glass-panel rounded-3xl p-6 relative overflow-hidden mb-6">
+                    <!-- Platform Icons -->
+                    <div class="flex justify-center gap-5 mb-6">
+                        <i class="fa-brands fa-instagram text-2xl platform-icon text-[#E1306C]"></i>
+                        <i class="fa-brands fa-github text-2xl platform-icon text-white"></i>
+                        <i class="fa-brands fa-linkedin text-2xl platform-icon text-[#0A66C2]"></i>
+                        <i class="fa-brands fa-discord text-2xl platform-icon text-[#5865F2]"></i>
+                        <i class="fa-brands fa-tiktok text-2xl platform-icon text-white"></i>
+                    </div>
+
+                    <form id="extractForm" class="space-y-4">
+                        <div>
+                            <div class="relative group">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-link text-slate-500 group-focus-within:text-indigo-400 transition-colors"></i>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    id="urlInput" 
+                                    placeholder="Cole a URL do perfil ou ID..." 
+                                    required
+                                    class="w-full bg-slate-900/60 border border-slate-700/50 rounded-2xl pl-12 pr-4 py-4 text-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all shadow-inner"
+                                >
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="submitBtn" class="micro-anim w-full bg-slate-100 hover:bg-white text-slate-900 font-bold text-lg py-4 rounded-2xl flex items-center justify-center space-x-3 shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                            <i id="btnIcon" class="fa-solid fa-magnifying-glass"></i>
+                            <span id="btnText">Analisar Perfil</span>
+                            <i id="loadingIcon" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+                        </button>
+                    </form>
+
+                    <!-- Estado de Erro -->
+                    <div id="errorArea" class="mt-6 hidden bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-start space-x-4 animate-[fadeIn_0.3s_ease-out]">
+                        <div class="bg-red-500/20 p-2 rounded-lg text-red-400">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-red-400 font-semibold mb-1">Falha na Extração</h4>
+                            <p id="errorMessage" class="text-sm text-red-300/80">Ocorreu um erro ao buscar o perfil.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estado de Resultado (Universal Card) -->
+                <div id="resultArea" class="hidden animate-[fadeIn_0.5s_ease-out]">
+                    <div class="universal-card mb-4 mx-auto max-w-md">
+                        <div id="ucBanner" class="uc-banner"></div>
+                        
+                        <div class="uc-avatar-container">
+                            <img id="ucAvatar" class="uc-avatar" src="" alt="Avatar">
+                            <img id="ucDecoration" class="uc-decoration hidden" src="" alt="Decoration">
+                        </div>
+                        
+                        <div class="uc-body">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 id="ucUsername" class="text-2xl font-bold text-white mb-1 truncate max-w-[200px]">Profile</h3>
+                                    <div class="text-slate-400 text-sm flex items-center gap-1.5 mb-4">
+                                        <i id="ucSourceIcon" class="fa-solid fa-globe"></i>
+                                        <span id="ucSourceText">Website Original</span>
+                                    </div>
+                                </div>
+                                
+                                <button id="btnFav" class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-yellow-400 hover:border-yellow-500/30 transition-colors flex items-center justify-center">
+                                    <i class="fa-regular fa-star"></i>
+                                </button>
+                            </div>
+
+                            <!-- Ações -->
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <button id="btnCopy" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white py-2.5 px-3 rounded-xl text-sm font-medium transition-colors border border-slate-700">
+                                    <i class="fa-regular fa-copy"></i> Copiar Avatar
+                                </button>
+                                <button id="btnDownload" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 px-3 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20">
+                                    <i class="fa-solid fa-download"></i> Baixar Imagem
+                                </button>
+                                <button id="btnDownloadBanner" class="hidden col-span-2 items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white py-2.5 px-3 rounded-xl text-sm font-medium transition-colors border border-slate-700">
+                                    <i class="fa-solid fa-image"></i> Baixar Capa/Banner
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Direita: Histórico -->
+            <div class="w-full lg:w-80 flex-shrink-0">
+                <div class="glass-panel rounded-3xl p-6 h-full min-h-[400px] flex flex-col">
+                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-history text-slate-400"></i> Buscas Recentes
+                    </h3>
+                    
+                    <div id="historyList" class="flex-grow space-y-3 overflow-y-auto pr-2">
+                        <div class="text-slate-500 text-sm text-center italic mt-10">
+                            Nenhum perfil no histórico.
+                        </div>
+                    </div>
+                    
+                    <button id="btnClearHistory" class="mt-4 w-full text-xs text-slate-500 hover:text-red-400 transition-colors py-2 border-t border-slate-700/50">
+                        <i class="fa-solid fa-trash-can"></i> Limpar Histórico
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+    
+    <div class="text-center text-slate-600 text-sm pb-6">
+        <i class="fa-solid fa-code"></i> Desenvolvido por nt
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-white text-slate-900 font-medium px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-10 pointer-events-none z-50 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-green-500 text-lg"></i> <span id="toastMsg">Sucesso!</span>
+    </div>
+
+    <script>
+        let currentProfile = null;
+        let history = JSON.parse(localStorage.getItem('avatarix_history') || '[]');
+        
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            t.classList.remove('opacity-0', 'translate-y-10');
+            setTimeout(() => t.classList.add('opacity-0', 'translate-y-10'), 3000);
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            if(history.length === 0) {
+                list.innerHTML = '<div class="text-slate-500 text-sm text-center italic mt-10">Nenhum perfil salvo.</div>';
+                return;
+            }
+            
+            list.innerHTML = history.map((item) => `
+                <div class="flex items-center gap-3 p-3 bg-slate-800/30 hover:bg-slate-700/50 rounded-2xl cursor-pointer border border-transparent hover:border-slate-600 transition-colors group" onclick="loadHistoryItem('${item.url}')">
+                    <img src="${item.avatar}" class="w-12 h-12 rounded-xl object-cover bg-slate-900 shadow-md">
+                    <div class="flex-grow min-w-0">
+                        <div class="font-medium text-slate-200 text-sm truncate flex items-center gap-1">
+                            ${item.username || item.url.split('/').pop()}
+                            ${item.fav ? '<i class="fa-solid fa-star text-yellow-400 text-[10px]"></i>' : ''}
+                        </div>
+                        <div class="text-xs text-slate-500 truncate mt-0.5">${item.url}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveToHistory(profile) {
+            const existingIdx = history.findIndex(h => h.url === profile.url);
+            let isFav = false;
+            if(existingIdx >= 0) {
+                isFav = history[existingIdx].fav;
+                history.splice(existingIdx, 1);
+            }
+            history.unshift({ ...profile, fav: isFav });
+            if(history.length > 20) history.pop();
+            localStorage.setItem('avatarix_history', JSON.stringify(history));
+            renderHistory();
+            updateFavBtnState(isFav);
+        }
+
+        function toggleFavorite() {
+            if(!currentProfile) return;
+            const idx = history.findIndex(h => h.url === currentProfile.url);
+            if(idx >= 0) {
+                history[idx].fav = !history[idx].fav;
+                localStorage.setItem('avatarix_history', JSON.stringify(history));
+                updateFavBtnState(history[idx].fav);
+                renderHistory();
+                showToast(history[idx].fav ? 'Favoritado!' : 'Removido!');
+            }
+        }
+
+        function updateFavBtnState(isFav) {
+            const btn = document.getElementById('btnFav');
+            if(isFav) {
+                btn.innerHTML = '<i class="fa-solid fa-star"></i>';
+                btn.classList.add('text-yellow-400', 'border-yellow-500/30');
+                btn.classList.remove('text-slate-400');
+            } else {
+                btn.innerHTML = '<i class="fa-regular fa-star"></i>';
+                btn.classList.remove('text-yellow-400', 'border-yellow-500/30');
+                btn.classList.add('text-slate-400');
+            }
+        }
+
+        document.getElementById('btnClearHistory').addEventListener('click', () => {
+            history = history.filter(h => h.fav);
+            localStorage.setItem('avatarix_history', JSON.stringify(history));
+            renderHistory();
+            showToast('Histórico limpo');
+        });
+
+        document.getElementById('btnFav').addEventListener('click', toggleFavorite);
+
+        window.loadHistoryItem = function(url) {
+            document.getElementById('urlInput').value = url;
+            document.getElementById('submitBtn').click();
+        };
+
+        async function downloadBlob(url, filename) {
+            try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+            } catch(e) {
+                window.open(url, '_blank');
+            }
+        }
+
+        document.getElementById('extractForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const url = document.getElementById('urlInput').value.trim();
+            const submitBtn = document.getElementById('submitBtn');
+            const resultArea = document.getElementById('resultArea');
+            const errorArea = document.getElementById('errorArea');
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-80');
+            document.getElementById('btnIcon').classList.add('hidden');
+            document.getElementById('loadingIcon').classList.remove('hidden');
+            document.getElementById('btnText').textContent = 'Analisando...';
+            
+            resultArea.classList.add('hidden');
+            errorArea.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Erro na API.');
+
+                currentProfile = data;
+
+                // Configurar Card Universal
+                const isDiscord = !url.startsWith('http');
+                const ucBanner = document.getElementById('ucBanner');
+                const btnDownloadBanner = document.getElementById('btnDownloadBanner');
+                const ucDecoration = document.getElementById('ucDecoration');
+                
+                // Helper to get extension from URL
+                const getExt = (urlStr) => {
+                    if(urlStr.includes('.gif')) return '.gif';
+                    if(urlStr.includes('.webp')) return '.webp';
+                    if(urlStr.includes('.jpg') || urlStr.includes('.jpeg')) return '.jpg';
+                    return '.png';
+                };
+
+                // Set Banner
+                if(data.banner) {
+                    ucBanner.style.backgroundImage = `url('${data.banner}')`;
+                    ucBanner.style.backgroundColor = 'transparent';
+                    btnDownloadBanner.classList.remove('hidden');
+                    btnDownloadBanner.classList.add('flex');
+                    btnDownloadBanner.onclick = () => downloadBlob(data.banner, `banner_${Date.now()}${getExt(data.banner)}`);
+                } else {
+                    ucBanner.style.backgroundImage = 'none';
+                    ucBanner.style.backgroundColor = data.color || '#1e293b';
+                    btnDownloadBanner.classList.add('hidden');
+                    btnDownloadBanner.classList.remove('flex');
+                }
+
+                // Set Avatar & Decoration
+                document.getElementById('ucAvatar').src = data.avatar;
+                if(data.decoration && isDiscord) {
+                    ucDecoration.src = data.decoration;
+                    ucDecoration.classList.remove('hidden');
+                } else {
+                    ucDecoration.classList.add('hidden');
+                }
+
+                // Set Name & Source
+                let sourceDisplay = 'Web Extraction';
+                let sourceIconClass = 'fa-globe';
+                
+                if (isDiscord) {
+                    document.getElementById('ucUsername').textContent = data.username || url;
+                    sourceDisplay = 'Discord Network';
+                    sourceIconClass = 'fa-discord fa-brands text-indigo-400';
+                } else {
+                    const domain = new URL(url).hostname.replace('www.', '');
+                    document.getElementById('ucUsername').textContent = data.username || domain;
+                    sourceDisplay = domain;
+                    
+                    if (domain.includes('github')) sourceIconClass = 'fa-github fa-brands text-slate-300';
+                    else if (domain.includes('instagram')) sourceIconClass = 'fa-instagram fa-brands text-pink-400';
+                    else if (domain.includes('linkedin')) sourceIconClass = 'fa-linkedin fa-brands text-blue-400';
+                }
+
+                document.getElementById('ucSourceText').textContent = sourceDisplay;
+                document.getElementById('ucSourceIcon').className = `fa-solid ${sourceIconClass}`;
+
+                // Actions
+                document.getElementById('btnCopy').onclick = () => {
+                    navigator.clipboard.writeText(data.avatar);
+                    showToast('Link copiado!');
+                };
+                document.getElementById('btnDownload').onclick = () => downloadBlob(data.avatar, `avatar_${Date.now()}${getExt(data.avatar)}`);
+
+                resultArea.classList.remove('hidden');
+                saveToHistory(data);
+
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = error.message;
+                errorArea.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-80');
+                document.getElementById('btnIcon').classList.remove('hidden');
+                document.getElementById('loadingIcon').classList.add('hidden');
+                document.getElementById('btnText').textContent = 'Analisar Perfil';
+            }
+        });
+
+        renderHistory();
+    </script>
+</body>
+</html>

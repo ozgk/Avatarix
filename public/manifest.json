@@ -1,0 +1,16 @@
+{
+  "name": "Avatarix | Universal Profile Fetcher",
+  "short_name": "Avatarix",
+  "description": "Extração instantânea de fotos de perfil. Busque por ID do Discord ou URL.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/847/847969.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
