@@ -5,20 +5,49 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 puppeteer.use(StealthPlugin());
 
 const extractAvatar = async (url) => {
+    // LAYER 0: Ultra-Fast Static Fetch (Economiza 100% de memória se o site for simples como GitHub)
+    try {
+        const res = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html'
+            },
+            signal: AbortSignal.timeout(5000)
+        });
+        
+        if (res.ok) {
+            const html = await res.text();
+            
+            // Regex simples para pegar imagens Open Graph
+            const ogImgMatch = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/i) || 
+                               html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/i);
+            
+            if (ogImgMatch && ogImgMatch[1]) {
+                const titleMatch = html.match(/<title>([^<]+)<\/title>/i) || 
+                                   html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
+                
+                let username = titleMatch && titleMatch[1] ? titleMatch[1] : new URL(url).hostname;
+                username = username.split(' •')[0].split(' |')[0].split(' -')[0].split(' (@')[0].trim();
+                
+                console.log(`[LAYER 0 SUCESSO] Extração rápida (sem Puppeteer) para ${url}`);
+                return { avatar: ogImgMatch[1], username };
+            }
+        }
+    } catch (e) {
+        console.log(`Layer 0 falhou, tentando Puppeteer...`);
+    }
+
     let browser = null;
     try {
         browser = await puppeteer.launch({
             headless: true,
-            // Argumentos agressivos para poupar memória em hospedagens como Render/Railway
+            // Argumentos otimizados para estabilidade no Docker
             args: [
                 '--no-sandbox', 
                 '--disable-setuid-sandbox', 
                 '--disable-dev-shm-usage',
                 '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu',
-                '--single-process'
+                '--disable-gpu'
             ],
             // Usar o Chromium do sistema se estiver no Docker, senão usa o padrão
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null
